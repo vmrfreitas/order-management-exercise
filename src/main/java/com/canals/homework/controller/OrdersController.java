@@ -9,16 +9,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class OrdersController {
-    private final OrderRepository repository;
+  private final OrderRepository repository;
 
-    OrdersController(OrderRepository orderRepository) {
-        this.repository = orderRepository;
-    }
+  OrdersController(OrderRepository orderRepository) {
+    this.repository = orderRepository;
+  }
 
-    @PostMapping("/orders")
-    public ResponseEntity<String> createOrder(@RequestBody Order order) {
-        var savedOrder = repository.save(order);
-        return ResponseEntity.ok("Order created with ID: " + savedOrder.getId());
-    }
-
+  @PostMapping("/orders")
+  public ResponseEntity<String> createOrder(@RequestBody Order order) {
+    var savedOrder = repository.save(order);
+    return ResponseEntity.ok("Order created with ID: " + savedOrder.getId());
+  }
 }
