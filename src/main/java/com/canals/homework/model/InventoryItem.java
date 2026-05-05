@@ -4,8 +4,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import java.util.List;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,15 +13,18 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-public class Order {
+public class InventoryItem {
   @Id
   @GeneratedValue(strategy = GenerationType.AUTO)
   private UUID id;
 
-  private String customer;
+  @ManyToOne
+  @JoinColumn(name = "warehouse_id")
+  private Warehouse warehouse;
 
-  private String shippingAddress;
+  @ManyToOne
+  @JoinColumn(name = "product_id")
+  private Product product;
 
-  @OneToMany(mappedBy = "order")
-  private List<OrderItem> items;
+  private Integer quantity;
 }
