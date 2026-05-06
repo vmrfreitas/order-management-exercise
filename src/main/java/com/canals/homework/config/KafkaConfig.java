@@ -1,19 +1,22 @@
 package com.canals.homework.config;
 
-import com.canals.homework.event.OrderCreatedEvent;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
-import org.springframework.kafka.config.TopicBuilder;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
 @Configuration
@@ -26,29 +29,41 @@ public class KafkaConfig {
   @Value("${spring.kafka.bootstrap-servers}")
   private String bootstrapServers;
 
+  @Value("${spring.kafka.consumer.group-id}")
+  private String groupId;
+
   @Bean
-  public ProducerFactory<String, OrderCreatedEvent> producerFactory() {
-    Map<String, Object> configProps = new HashMap<>();
-    configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-    configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-    configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-    configProps.put(ProducerConfig.ACKS_CONFIG, "all");
-    return new DefaultKafkaProducerFactory<>(configProps);
+  public ProducerFactory<String, Object> producerFactory() {
+    Map<String, Object> config = new HashMap<>();
+    config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+    config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+    config.put(ProducerConfig.ACKS_CONFIG, "all");
+    return new DefaultKafkaProducerFactory<>(config);
   }
 
   @Bean
-  public KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate(
-      ProducerFactory<String, OrderCreatedEvent> producerFactory) {
-    return new KafkaTemplate<>(producerFactory);
+  public KafkaTemplate<String, Object> kafkaTemplate(ProducerFactory<String, Object> pf) {
+    return new KafkaTemplate<>(pf);
   }
 
   @Bean
-  public NewTopic orderCreatedTopic() {
-    return TopicBuilder.name(ORDER_CREATED_TOPIC).partitions(1).replicas(1).build();
+  public ConsumerFactory<String, Object> consumerFactory() {
+    Map<String, Object> config = new HashMap<>();
+    config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+    config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+    config.put(JsonDeserializer.TRUSTED_PACKAGES, "com.canals.homework.event");
+    return new DefaultKafkaConsumerFactory<>(config);
   }
 
   @Bean
-  public NewTopic orderFulfilledTopic() {
-    return TopicBuilder.name(ORDER_FULFILLED_TOPIC).partitions(1).replicas(1).build();
+  public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(
+      ConsumerFactory<String, Object> cf) {
+    ConcurrentKafkaListenerContainerFactory<String, Object> factory =
+        new ConcurrentKafkaListenerContainerFactory<>();
+    factory.setConsumerFactory(cf);
+    return factory;
   }
 }

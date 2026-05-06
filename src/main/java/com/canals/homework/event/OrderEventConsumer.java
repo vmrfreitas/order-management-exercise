@@ -28,7 +28,7 @@ public class OrderEventConsumer {
       orderService.fulfillOrder(event.getOrderId());
     } catch (Exception e) {
       logger.error("Error processing order fulfillment for orderId: {}", event.getOrderId(), e);
-      throw e; // Re-throw to trigger Kafka retry mechanism
+      throw e;
     }
   }
 }

@@ -16,14 +16,17 @@ import lombok.Setter;
 @Setter
 public class Order {
   @Id
-  @GeneratedValue(strategy = GenerationType.AUTO)
+  @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
   private String customer;
 
   private String shippingAddress;
 
-  @OneToMany(mappedBy = "order")
+  @OneToMany(
+      mappedBy = "order",
+      cascade = jakarta.persistence.CascadeType.ALL,
+      orphanRemoval = true)
   private List<OrderItem> items;
 
   @Enumerated private OrderStatus status = OrderStatus.PENDING;

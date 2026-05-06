@@ -15,7 +15,7 @@ import lombok.Setter;
 @Setter
 public class Warehouse {
   @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
   @OneToMany(mappedBy = "warehouse")
