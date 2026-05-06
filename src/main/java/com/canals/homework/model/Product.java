@@ -13,4 +13,6 @@ public class Product {
   @Id private UUID productId;
 
   private String name;
+
+  private Double price;
 }

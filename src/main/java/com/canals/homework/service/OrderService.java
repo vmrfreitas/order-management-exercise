@@ -1,6 +1,7 @@
 package com.canals.homework.service;
 
 import com.canals.homework.controller.LocationClient;
+import com.canals.homework.controller.PaymentClient;
 import com.canals.homework.model.Order;
 import com.canals.homework.model.OrderStatus;
 import com.canals.homework.model.Warehouse;
@@ -21,16 +22,19 @@ public class OrderService {
   private final WarehouseRepository warehouseRepository;
   private final InventoryItemRepository inventoryItemRepository;
   private final LocationClient locationClient;
+  private final PaymentClient paymentClient;
 
   public OrderService(
       OrderRepository orderRepository,
       WarehouseRepository warehouseRepository,
       InventoryItemRepository inventoryItemRepository,
-      LocationClient locationClient) {
+      LocationClient locationClient,
+      PaymentClient paymentClient) {
     this.orderRepository = orderRepository;
     this.warehouseRepository = warehouseRepository;
     this.inventoryItemRepository = inventoryItemRepository;
     this.locationClient = locationClient;
+    this.paymentClient = paymentClient;
   }
 
   @Transactional
@@ -54,6 +58,11 @@ public class OrderService {
       }
 
       if (!decreaseInventory(selectedWarehouse, foundOrder)) {
+        markOrderAsFailed(foundOrder);
+        return;
+      }
+
+      if (!processPayment(foundOrder)) {
         markOrderAsFailed(foundOrder);
         return;
       }
@@ -108,6 +117,23 @@ public class OrderService {
     }
 
     return true;
+  }
+
+  private boolean processPayment(Order order) {
+    var totalAmount =
+        order.getItems().stream()
+            .mapToDouble(item -> item.getQuantity() * item.getProduct().getPrice())
+            .sum();
+    var description = "Payment for order " + order.getId();
+
+    var paymentSuccess =
+        paymentClient.processPayment(order.getCreditCardNumber(), totalAmount, description);
+
+    if (!paymentSuccess) {
+      logger.error("Payment failed for order: {}", order.getId());
+    }
+
+    return paymentSuccess;
   }
 
   private void markOrderAsFulfilled(Order order, Warehouse warehouse) {

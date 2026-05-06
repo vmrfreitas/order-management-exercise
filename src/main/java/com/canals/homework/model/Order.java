@@ -23,6 +23,8 @@ public class Order {
 
   private String shippingAddress;
 
+  private String creditCardNumber;
+
   @OneToMany(
       mappedBy = "order",
       cascade = jakarta.persistence.CascadeType.ALL,

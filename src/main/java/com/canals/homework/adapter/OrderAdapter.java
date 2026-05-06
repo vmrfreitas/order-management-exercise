@@ -18,6 +18,7 @@ public class OrderAdapter {
     var newOrder = new Order();
     newOrder.setCustomer(request.getCustomer());
     newOrder.setShippingAddress(request.getShippingAddress());
+    newOrder.setCreditCardNumber(request.getCreditCardNumber());
 
     var orderItems =
         request.getItems().stream()

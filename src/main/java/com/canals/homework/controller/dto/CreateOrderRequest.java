@@ -9,5 +9,6 @@ import lombok.Setter;
 public class CreateOrderRequest {
   private String customer;
   private String shippingAddress;
+  private String creditCardNumber;
   private List<OrderItemRequest> items;
 }

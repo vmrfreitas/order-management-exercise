@@ -1,10 +1,10 @@
 -- Insert test Products
-INSERT INTO "Product" ("productId", "name") VALUES
-('550e8400-e29b-41d4-a716-446655440001', 'Laptop'),
-('550e8400-e29b-41d4-a716-446655440002', 'Mouse'),
-('550e8400-e29b-41d4-a716-446655440003', 'Keyboard'),
-('550e8400-e29b-41d4-a716-446655440004', 'Monitor'),
-('550e8400-e29b-41d4-a716-446655440005', 'USB Cable');
+INSERT INTO "Product" ("productId", "name", "price") VALUES
+('550e8400-e29b-41d4-a716-446655440001', 'Laptop', 999.99),
+('550e8400-e29b-41d4-a716-446655440002', 'Mouse', 29.99),
+('550e8400-e29b-41d4-a716-446655440003', 'Keyboard', 79.99),
+('550e8400-e29b-41d4-a716-446655440004', 'Monitor', 399.99),
+('550e8400-e29b-41d4-a716-446655440005', 'USB Cable', 9.99);
 
 -- Insert test Warehouses
 INSERT INTO "Warehouse" ("id", "address") VALUES
