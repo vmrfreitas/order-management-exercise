@@ -1,5 +1,6 @@
 package com.canals.homework.controller;
 
+import java.math.BigDecimal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -16,7 +17,7 @@ public class PaymentClient {
    * @param description a description of the payment
    * @return true if the payment was successful, false otherwise
    */
-  public boolean processPayment(String creditCardNumber, Double amount, String description) {
+  public boolean processPayment(String creditCardNumber, BigDecimal amount, String description) {
     // Mock implementation for payment processing
     // In a real application, this would call an external payment API
     logger.info(

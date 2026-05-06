@@ -58,7 +58,7 @@ RESPONSE=$(curl -s -X POST "$APP_URL/orders" \
 
 echo "Response: $RESPONSE"
 
-# Extract Order ID (assuming format "Order created with ID: <UUID>. ...")
+# Extract Order ID from JSON response ({"orderId":"<UUID>", ...})
 ORDER_ID=$(echo "$RESPONSE" | grep -oE '[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}' | head -n 1)
 
 if [ -z "$ORDER_ID" ]; then

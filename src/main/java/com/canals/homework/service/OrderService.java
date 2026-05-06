@@ -8,6 +8,7 @@ import com.canals.homework.model.Warehouse;
 import com.canals.homework.repository.InventoryItemRepository;
 import com.canals.homework.repository.OrderRepository;
 import com.canals.homework.repository.WarehouseRepository;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +41,7 @@ public class OrderService {
   @Transactional
   public void fulfillOrder(UUID orderId) {
     try {
-      var foundOrder = findOrder(orderId);
+      Order foundOrder = findOrder(orderId);
       var warehousesWithAllItems = warehouseRepository.findWarehousesWithAllItems(orderId);
 
       if (warehousesWithAllItems.isEmpty()) {
@@ -49,7 +50,7 @@ public class OrderService {
         return;
       }
 
-      var selectedWarehouse =
+      Warehouse selectedWarehouse =
           selectClosestWarehouse(warehousesWithAllItems, foundOrder.getShippingAddress());
       if (selectedWarehouse == null) {
         logger.error("Failed to select a warehouse for order: {}", orderId);
@@ -57,15 +58,10 @@ public class OrderService {
         return;
       }
 
-      if (!decreaseInventory(selectedWarehouse, foundOrder)) {
-        markOrderAsFailed(foundOrder);
-        return;
-      }
-
-      if (!processPayment(foundOrder)) {
-        markOrderAsFailed(foundOrder);
-        return;
-      }
+      // Both inventory deduction and payment are within @Transactional.
+      // If either fails (throws), the entire transaction rolls back — no partial deductions.
+      decreaseInventory(selectedWarehouse, foundOrder);
+      processPayment(foundOrder);
 
       markOrderAsFulfilled(foundOrder, selectedWarehouse);
 
@@ -83,11 +79,11 @@ public class OrderService {
 
   private Warehouse selectClosestWarehouse(
       java.util.List<Warehouse> warehouses, String shippingAddress) {
-    var closestWarehouse = (Warehouse) null;
-    var minimumDistance = Double.MAX_VALUE;
+    Warehouse closestWarehouse = null;
+    double minimumDistance = Double.MAX_VALUE;
 
-    for (var currentWarehouse : warehouses) {
-      var distanceToShippingLocation =
+    for (Warehouse currentWarehouse : warehouses) {
+      double distanceToShippingLocation =
           locationClient.getDistance(currentWarehouse.getAddress(), shippingAddress);
       if (distanceToShippingLocation < minimumDistance) {
         minimumDistance = distanceToShippingLocation;
@@ -98,42 +94,49 @@ public class OrderService {
     return closestWarehouse;
   }
 
-  private boolean decreaseInventory(Warehouse warehouse, Order order) {
+  /**
+   * Deducts inventory for all items in the order from the selected warehouse. Throws a
+   * RuntimeException if any deduction fails, which causes @Transactional to roll back all
+   * previously-deducted items in this transaction.
+   */
+  private void decreaseInventory(Warehouse warehouse, Order order) {
     for (var orderItem : order.getItems()) {
-      var inventoryUpdateCount =
+      int inventoryUpdateCount =
           inventoryItemRepository.decreaseQuantity(
               warehouse.getId(), orderItem.getProduct().getProductId(), orderItem.getQuantity());
 
       if (inventoryUpdateCount == 0) {
-        logger.error(
-            "Failed to deduct inventory for product: {} in warehouse: {}",
-            orderItem.getProduct().getProductId(),
-            warehouse.getId());
-        return false;
+        throw new RuntimeException(
+            String.format(
+                "Insufficient inventory for product %s in warehouse %s",
+                orderItem.getProduct().getProductId(), warehouse.getId()));
       }
 
       inventoryItemRepository.deleteIfEmpty(
           warehouse.getId(), orderItem.getProduct().getProductId());
     }
-
-    return true;
   }
 
-  private boolean processPayment(Order order) {
-    var totalAmount =
+  /**
+   * Processes payment for the order. Throws a RuntimeException on failure, which causes
+   * the @Transactional to roll back inventory deductions.
+   */
+  private void processPayment(Order order) {
+    BigDecimal totalAmount =
         order.getItems().stream()
-            .mapToDouble(item -> item.getQuantity() * item.getProduct().getPrice())
-            .sum();
-    var description = "Payment for order " + order.getId();
+            .map(
+                item ->
+                    item.getProduct().getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    var paymentSuccess =
+    String description = "Payment for order " + order.getId();
+
+    boolean paymentSuccess =
         paymentClient.processPayment(order.getCreditCardNumber(), totalAmount, description);
 
     if (!paymentSuccess) {
-      logger.error("Payment failed for order: {}", order.getId());
+      throw new RuntimeException("Payment failed for order: " + order.getId());
     }
-
-    return paymentSuccess;
   }
 
   private void markOrderAsFulfilled(Order order, Warehouse warehouse) {

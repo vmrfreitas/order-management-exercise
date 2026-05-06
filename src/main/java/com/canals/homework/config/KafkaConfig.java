@@ -16,15 +16,14 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.support.serializer.JsonDeserializer;
-import org.springframework.kafka.support.serializer.JsonSerializer;
+import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
+import org.springframework.kafka.support.serializer.JacksonJsonSerializer;
 
 @Configuration
 @EnableKafka
 public class KafkaConfig {
 
   public static final String ORDER_CREATED_TOPIC = "order-created";
-  public static final String ORDER_FULFILLED_TOPIC = "order-fulfilled";
 
   @Value("${spring.kafka.bootstrap-servers}")
   private String bootstrapServers;
@@ -37,7 +36,7 @@ public class KafkaConfig {
     Map<String, Object> config = new HashMap<>();
     config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-    config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+    config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
     config.put(ProducerConfig.ACKS_CONFIG, "all");
     return new DefaultKafkaProducerFactory<>(config);
   }
@@ -53,8 +52,8 @@ public class KafkaConfig {
     config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
     config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-    config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-    config.put(JsonDeserializer.TRUSTED_PACKAGES, "com.canals.homework.event");
+    config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JacksonJsonDeserializer.class);
+    config.put(JacksonJsonDeserializer.TRUSTED_PACKAGES, "com.canals.homework.event");
     return new DefaultKafkaConsumerFactory<>(config);
   }
 

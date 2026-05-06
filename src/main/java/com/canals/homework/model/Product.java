@@ -2,6 +2,7 @@ package com.canals.homework.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import java.math.BigDecimal;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,5 +15,5 @@ public class Product {
 
   private String name;
 
-  private Double price;
+  private BigDecimal price;
 }

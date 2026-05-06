@@ -1,17 +1,20 @@
 package com.canals.homework.model;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 
 @Entity
+@Table(name = "orders")
 @Getter
 @Setter
 public class Order {
@@ -31,5 +34,6 @@ public class Order {
       orphanRemoval = true)
   private List<OrderItem> items;
 
-  @Enumerated private OrderStatus status = OrderStatus.PENDING;
+  @Enumerated(EnumType.STRING)
+  private OrderStatus status = OrderStatus.PENDING;
 }

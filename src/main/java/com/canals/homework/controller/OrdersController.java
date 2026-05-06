@@ -2,9 +2,11 @@ package com.canals.homework.controller;
 
 import com.canals.homework.adapter.OrderAdapter;
 import com.canals.homework.controller.dto.CreateOrderRequest;
+import com.canals.homework.controller.dto.CreateOrderResponse;
 import com.canals.homework.event.OrderEventPublisher;
 import com.canals.homework.model.Order;
 import com.canals.homework.repository.OrderRepository;
+import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,7 +31,8 @@ public class OrdersController {
   }
 
   @PostMapping("/orders")
-  public ResponseEntity<String> createOrder(@RequestBody CreateOrderRequest request) {
+  public ResponseEntity<CreateOrderResponse> createOrder(
+      @Valid @RequestBody CreateOrderRequest request) {
     var newOrder = orderAdapter.toDomain(request);
     var savedOrder = orderRepository.save(newOrder);
 
@@ -37,13 +40,13 @@ public class OrdersController {
     eventPublisher.publishOrderCreated(
         savedOrder.getId(), savedOrder.getCustomer(), savedOrder.getShippingAddress());
 
-    return ResponseEntity.accepted()
-        .body(
-            "Order created with ID: "
-                + savedOrder.getId()
-                + ". Status: PENDING. Check /orders/"
-                + savedOrder.getId()
-                + " for updates.");
+    var response =
+        new CreateOrderResponse(
+            savedOrder.getId(),
+            savedOrder.getStatus().name(),
+            "Order created. Check /orders/" + savedOrder.getId() + " for updates.");
+
+    return ResponseEntity.accepted().body(response);
   }
 
   @GetMapping("/orders/{orderId}")
