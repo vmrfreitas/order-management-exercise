@@ -1,6 +1,7 @@
 package com.canals.homework.model;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -24,4 +25,6 @@ public class Order {
 
   @OneToMany(mappedBy = "order")
   private List<OrderItem> items;
+
+  @Enumerated private OrderStatus status = OrderStatus.PENDING;
 }
