@@ -41,29 +41,29 @@ public class OrderService {
   @Transactional
   public void fulfillOrder(UUID orderId) {
     try {
-      Order foundOrder = findOrder(orderId);
+      var order = findOrder(orderId);
       var warehousesWithAllItems = warehouseRepository.findWarehousesWithAllItems(orderId);
 
       if (warehousesWithAllItems.isEmpty()) {
         logger.warn("No warehouse with all items found for order: {}", orderId);
-        markOrderAsFailed(foundOrder);
+        markOrderAsFailed(order);
         return;
       }
 
-      Warehouse selectedWarehouse =
-          selectClosestWarehouse(warehousesWithAllItems, foundOrder.getShippingAddress());
+      var selectedWarehouse =
+          selectClosestWarehouse(warehousesWithAllItems, order.getShippingAddress());
       if (selectedWarehouse == null) {
         logger.error("Failed to select a warehouse for order: {}", orderId);
-        markOrderAsFailed(foundOrder);
+        markOrderAsFailed(order);
         return;
       }
 
       // Both inventory deduction and payment are within @Transactional.
       // If either fails (throws), the entire transaction rolls back — no partial deductions.
-      decreaseInventory(selectedWarehouse, foundOrder);
-      processPayment(foundOrder);
+      decreaseInventory(selectedWarehouse, order);
+      processPayment(order);
 
-      markOrderAsFulfilled(foundOrder, selectedWarehouse);
+      markOrderAsFulfilled(order, selectedWarehouse);
 
     } catch (Exception e) {
       logger.error("Error fulfilling order {}: {}", orderId, e.getMessage(), e);
@@ -80,10 +80,10 @@ public class OrderService {
   private Warehouse selectClosestWarehouse(
       java.util.List<Warehouse> warehouses, String shippingAddress) {
     Warehouse closestWarehouse = null;
-    double minimumDistance = Double.MAX_VALUE;
+    var minimumDistance = Double.MAX_VALUE;
 
-    for (Warehouse currentWarehouse : warehouses) {
-      double distanceToShippingLocation =
+    for (var currentWarehouse : warehouses) {
+      var distanceToShippingLocation =
           locationClient.getDistance(currentWarehouse.getAddress(), shippingAddress);
       if (distanceToShippingLocation < minimumDistance) {
         minimumDistance = distanceToShippingLocation;
@@ -101,7 +101,7 @@ public class OrderService {
    */
   private void decreaseInventory(Warehouse warehouse, Order order) {
     for (var orderItem : order.getItems()) {
-      int inventoryUpdateCount =
+      var inventoryUpdateCount =
           inventoryItemRepository.decreaseQuantity(
               warehouse.getId(), orderItem.getProduct().getProductId(), orderItem.getQuantity());
 
@@ -122,16 +122,16 @@ public class OrderService {
    * the @Transactional to roll back inventory deductions.
    */
   private void processPayment(Order order) {
-    BigDecimal totalAmount =
+    var totalAmount =
         order.getItems().stream()
             .map(
                 item ->
                     item.getProduct().getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    String description = "Payment for order " + order.getId();
+    var description = "Payment for order " + order.getId();
 
-    boolean paymentSuccess =
+    var paymentSuccess =
         paymentClient.processPayment(order.getCreditCardNumber(), totalAmount, description);
 
     if (!paymentSuccess) {
