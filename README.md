@@ -15,7 +15,7 @@ A production-grade backend service for an e-commerce platform that handles order
 
 ```bash
 # Start everything: PostgreSQL, Kafka, Zookeeper, and the app
-docker compose up --build -d
+docker-compose up --build -d
 
 # Wait for the app to be ready (~30s)
 curl -s http://localhost:8080/orders/{any-uuid} 2>/dev/null
@@ -96,48 +96,30 @@ Tests use an embedded Kafka broker and H2 in-memory database — no Docker neede
 ### Shut Down
 
 ```bash
-docker compose down -v   # -v removes the PostgreSQL data volume
+docker-compose down -v   # -v removes the PostgreSQL data volume
 ```
 
-## Architecture
+## Architecture/Flow diagram
 
-```
-┌──────────────┐    POST /orders     ┌──────────────────┐
-│   Client     │ ──────────────────► │ OrdersController  │
-└──────────────┘                     └────────┬─────────┘
-                                              │
-                              ┌───────────────┼───────────────┐
-                              ▼               ▼               ▼
-                        OrderAdapter   OrderRepository   OrderEventPublisher
-                        (DTO→Entity)   (save PENDING)         │
-                                                              │ Kafka
-                                                              ▼
-                                                     ┌─────────────────┐
-                                                     │OrderEventConsumer│
-                                                     └────────┬────────┘
-                                                              │
-                                                              ▼
-                                                     ┌─────────────────┐
-                                                     │  OrderService    │
-                                                     │  (fulfillOrder)  │
-                                                     └────────┬────────┘
-                                                              │
-                              ┌───────────────┬───────────────┼───────────────┐
-                              ▼               ▼               ▼               ▼
-                    Find warehouses   Select closest   Deduct inventory   Process payment
-                    with all items    (LocationClient)  (atomic UPDATE)   (PaymentClient)
-                              │               │               │               │
-                              └───────────────┴───────────────┴───────────────┘
-                                                              │
-                                                    Order → FULFILLED / FAILED
-```
+![flow_diagram](architecture.png)
+
+*Figure 1: The event-driven architecture decoupling order ingestion from background fulfillment. When an order is placed, the API responds immediately while a Kafka consumer orchestrates warehouse selection, inventory deduction, and payment processing asynchronously.*
+
+## Database diagram
+
+![database_diagram](database.png)
+
+*Figure 2: The relational database schema. `InventoryItem` maps `Product` availability to each `Warehouse`, allowing efficient queries to find fulfillment centers with sufficient stock for an entire `Order`.*
 
 ### Key Design Decisions
 
 | Decision | Rationale |
 |---|---|
 | **Async fulfillment via Kafka** | `POST /orders` returns immediately (202 Accepted). Fulfillment runs asynchronously via a Kafka consumer, keeping the API responsive. |
-| **Single-warehouse constraint** | A JPQL relational division query finds all warehouses that stock every item in the order with sufficient quantity. |
+| **Event-Driven Architecture** | Decoupling order ingestion from fulfillment ensures that spikes in traffic don't overwhelm the backend or delay the user's initial request. |
+| **Single-warehouse constraint** | A JPQL query finds all warehouses that stock every item in the order with sufficient quantity. |
+| **Closest Warehouse Selection** | Distances are calculated using a `LocationClient` to select the eligible warehouse nearest to the shipping address. |
+| **Mocked External Services** | Geocoding and payment integrations are encapsulated behind client interfaces. This isolates business logic and makes it easy to swap with real 3rd-party APIs. |
 | **Atomic inventory deduction** | `UPDATE ... WHERE quantity >= :requested` prevents overselling without pessimistic locks. The entire fulfillment runs in a single `@Transactional` — if any item or payment fails, all deductions roll back. |
 | **BigDecimal for money** | Avoids IEEE 754 floating-point rounding errors in financial calculations. |
 | **PostgreSQL** | Production-grade relational database, containerized via Docker Compose. Tests use H2 in-memory for speed. |
